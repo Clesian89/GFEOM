@@ -10,6 +10,7 @@
 !
 !
 module matrixmod
+
 implicit none
 integer, private, parameter :: i4=selected_int_kind(9)
 integer, private, parameter :: r8=selected_real_kind(15,9)
@@ -197,169 +198,71 @@ do i = 1,N_r
 write (*,*) (A(i,j), j=1,N_col)
 enddo
 end subroutine gen_mprint
-!
-!I need to build the K_corr in the psi_basis blocking the stuff
-!this should be r
-!
-subroutine generate_Q(E,K_corr,Q,beta,mu,N)
-integer(kind=i4)::N,i,j,s
-real(kind=r8)::E(N),K_corr(N,N),Q(N,N)
-real(kind=r8)::delta_E,pdf_is,delta_sign,beta,mu
+
+subroutine generate_Q(Q,Kc,E,beta,mu,N)
+
+real(kind=r8)::Q(N,N),Kc(N,N),beta,mu
+real(kind=r8)::F_E(N),E(N)  
+integer(kind=i4)::N,i,j
+
+if(beta.gt.50) then
+	do i=1,N
+		if(E(i).gt.mu) then
+			F_E(i)=0 
+		else
+			F_E(i)=1
+		endif 
+	enddo
+else
+	do i=1,N
+		F_E(i)=1./( exp(beta*(E(i)-mu) ) + 1. )
+	enddo 
+endif 
 
 do i=1,N
-    do j=1,N
-        if(abs(K_corr(i,j)).lt.1.E-13) then
-            K_corr(i,j)=0
-        endif
-    enddo
-enddo
-
-do i=1,N
-    do s=1,N
-        if(K_corr(i,s).eq.0)  then
-            !simple cases
-            Q(i,s)=0
-        else
-            !double pole cases or similar one
-            delta_E=abs( E(i)-E(s) )
-            delta_sign=E(i)-E(s)
-            if(delta_E.lt.1.E-6) then
-                write(*,*) "r4ok"
-                if(beta.gt.600) then
-                    if(mu.ne.E(i).and.mu.ne.E(s)) then
-                        pdf_is=0
-                    else
-                    write(*,*) "whowowo"
-                    pdf_is= -beta/( (1+exp(-beta*(E(i)-mu)))**2 )
-                    endif
-                else
-                !if the temperature is high then we can use the formal derivative of the
-                !fermi distributin maybe this expression can be regularized
-                    pdf_is=-beta* (exp(beta*(E(i)-mu))) / (exp(beta*(E(i)-mu))+1)**2
-                endif
-                Q(i,s)=pdf_is*K_corr(i,s)
-            else
-            !no double pole case maybe we should do somenthing also here
-                if(beta.gt.600)
-                    if(E(i).lt.mu.and.E(s).lt.mu) then
-                        pdf_is=0
-                    endif
-                    if(E(i).gt.mu.and.E(s).gt.mu)then
-                        pdf_is=0
-                    endif
-                    if(E(i).gt.mu.and.E(s).lt.mu) then
-                        pdf_is=-1
-                    endif
-                    if(E(i).lt.mu.and.E(s).gt.mu) then
-                        pdf_id=1
-                    endif
-                else
-                    pdf_is=( 1./(exp(beta*(E(i)-mu))+1) - 1./(exp(beta*E(j)-mu)+1) )/(E(i)-E(s))
-                    Q(i,s)= pdf_is*K_corr(i,s)
-                endif
-                    Q(i,s)=pdf_is*K_corr    
-            endif
-        endif
-
-    enddo
-enddo
-
+	do j=1,N
+		if(Kc(i,j).eq.0) then
+			Q(i,j)=0
+		else 
+			Q(i,j)=( ( F_E(i)-F_E(j) )/(E(i)-E(j)) )*Kc(i,j)
+		endif       
+	enddo
+enddo 
 endsubroutine generate_Q
-!
-!
-!
-subroutine generate_MP1(MP1,R,N)
-integer(kind=i4)::N
-real(kind=r8)::MP1(N,N),R(N,N)
-MP1=transpose(R)
-endsubroutine generate_MP1
 
-subroutine generate_MP2(MP2,E,M,R,beta,mu,N)
-integer(kind=i4)::i,j,N,q
-real(kind=r8):: f_e,beta,mu
-real(kind=r8)::MP2(N,N),M(N,N),R(N,N),E(N)
-do i=1,N
-    do j=1,N
-        MP2(i,j)=0
-    enddo
-enddo
-
-do i=1,N
-    f_e=1./(exp(beta*(E(i)-mu)  )+1)
-    do j=1,N
-        do q=1,N
-            MP2(i,j)=MP2(i,j)+R(q,i)*f_e*M(q,j)
-        enddo
-    enddo
-enddo
-
-endsubroutine generate_MP2
-
-
-subroutine generate_MP3(MP3,Q,R,M,N)
-integer(kind=i4)::i,j,p,s,N
-real(kind=r8)::MP3(N,N),Q(N,N),R(N,N),M(N,N)
-
-do i=1,N
-    do j=1,N
-        MP3(i,j)=0
-    enddo
-enddo
-
+subroutine generate_FR(FR,R,E,beta,mu,N) 
+real(kind=r8)::FR(N,N),R(N,N),E(N),F_E(N) 
+real(kind=r8)::beta,mu
+integer (kind=i4)::N,i,j
+if(beta.gt.50) then
+	do i=1,N
+		if(E(i).gt.mu) then
+			F_E(i)=0
+		else
+			F_E(i)=1
+		endif
+	enddo
+else
+	do i=1,N
+		F_E(i)=1./( exp(beta*(E(i)-mu) ) + 1. ) 
+	enddo
+endif
 
 
 do i=1,N
-    do j=1,N
-
-        do s=1,N
-            do p=1,N
-                MP3(i,j)=MP3(i,j)+Q(i,s)*R(p,s)*M(p,j)
-            enddo
-        enddo
-
-
-    enddo
-enddo
-
-endsubroutine generate_MP3
-
-subroutine generate_v1(v1,kn_term,E,R,beta,mu,N)
-real(kind=r8)::kn_term(N),E(N),f_e,v1(N),R(N,N)
-real(kind=r8)::mu,beta
-integer(kind=i4)::i,q,N
-
-do i=1,N
-    v1(i)=0
-enddo
-
-
-do i=1,N
-    f_e=1./(exp(beta*(E(i)-mu)  )+1)
-    do q=1,N
-        v1(i)=v1(i)+f_e*R(q,i)*kn_term(q)
-    enddo
-enddo
+	do j=1,N
+		FR(i,j)=F_E(i)*R(i,j)  
+	enddo
+enddo 
+endsubroutine generate_FR
 
 
 
-endsubroutine generate_v1
 
-subroutine generate_v2(v2,kn_term,Q,R,beta,mu,N)
-real(kind=r8)::Q(N,N),R(N,N),beta,mu,kn_term(N),v2(N)
-integer(kind=i4)::i,j,p,s,N
-do i=1,N
-    v2(i)=0
-enddo
 
-do i=1,N
-    do p=1,N
-        do s=1,N
-            v2(i)=v2(i)+Q(i,s)*R(p,s)*kn_term(p)
-        enddo
-    enddo
-enddo
 
-endsubroutine generate_v2
+
+
 
 
 

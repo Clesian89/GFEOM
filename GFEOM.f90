@@ -1,201 +1,53 @@
 
-! Two operator c_k (d'dc)_k Correlation function functional thoery.
-!
-! Created by Francesco Catalano on 12/09/16.
-!
+program GFEOM
 
-
-
-
-
-
-
-program FC_CFFT
 use matrixmod
-!variables type
-!---------------------------------------------------------------------------------
+
+!definition of the precsion
 implicit none
 integer, parameter :: i1=selected_int_kind(1)
 integer, parameter :: i4=selected_int_kind(9)
 integer, parameter :: i8=selected_int_kind(15)
 integer, parameter :: r8=selected_real_kind(15,9)
-!---------------------------------------------------------------------------------
-
-!Physical System variables
-!---------------------------------------------------------------------------------
-integer(kind=i4)::info,N_site_x,N_site_y,N_tot,M_site,cor
-real(kind=r8):: U,beta,t_x,t_y,mu,t_kb,pi,tot_weight
-real(kind=r8):: bar_n_old,e_tot,muinit,E_init,E_old,temp,det
-!---------------------------------------------------------------------------------
 
 
-!Matrix Variables
-!--------------------------------------------------------------------------------
-real(kind=r8),allocatable::Q(:,:),kn_term(:)
-real(kind=r8),allocatable::K_mat(:,:),K12(:,:),K21(:,:),K11(:,:),K22(:,:)
-real(kind=r8),allocatable::R1(:,:),R2(:,:),omega1(:,:),omega1old(:,:)
-real(kind=r8),allocatable::omega8(:,:),exppomega8(:,:),expmomega8(:,:),ID8(:,:)
-real(kind=r8),allocatable::wr(:),wi(:),vl(:,:),wrord(:),invR2(:,:),K_teff(:,:)
-real(kind=r8),allocatable::KeffP(:,:),L_mat(:,:),R_mat(:,:),E_mat(:,:),M_mat(:,:)
-real(kind=r8),allocatable::F_E(:,:),ID20(:,:),RFL(:,:),inhom(:),L_syst(:,:),solu(:)
-real(kind=r8),allocatable::anticom_av(:),spectral(:),reig_test(:),ieig_test(:),rot_C_mat(:,:)
-real(kind=r8),allocatable::psi_K_corr(:,:),E_n(:),M1(:,:),M2(:,:)
-real(kind=r8),allocatable::mat_A(:,:),mat_B(:,:),mat_C(:,:),omega_A(:,:),omega_B(:,:),temp_BB(:,:)
-real(kind=r8),allocatable::wr_A(:),wr_B(:),wi_A(:),wi_B(:),temp_AA(:,:),omegatrA(:,:),omegatrB(:,:)
-real(kind=r8),allocatable::MP1(:,:),MP2(:,:),MP3(:,:),v1(:),v2(:),M_tilde(:,:),v_tilde(:)
-real(kind=r8),allocatable::doub_pol_corr(:)
-!----------------------------------------------------------------------------------
+!Physical system varibales
+real(kind=r8)::mu,U,beta,t_x 
+!Kind system physical variables ...
+ 
+real(kind=r8)::Ku(20,20),Kc(20,20),R(20,20),av(20),L(20,20)
+real(kind=r8)::M_mat(20,20),v(20),Q(20,20),K_mat(20,20)
+real(kind=r8)::E(20),e_r(20),e_i(20),R_temp(20,20),D(20,20) 
+real(kind=r8)::FR(20,20),L_sys(20,20),L1(20,20),L2(20,20),L3(20,20) 
+real(kind=r8)::inhom(20),solu(20)    
+!Dummy variable 
+integer(kind=i4)::i,j
+!remember to clean
+real(kind=r8)::temp1(20,20),temp2(20,20) 
 
-!Dummy_variables or cycle varibles
-!-----------------------------------------------------------------------------------
-integer(kind=i4):: i,j,k,l,k_i,iter,i_check,k_check,q_i,s,p
-real(kind=r8):: Es
 
-!File variables
-!---------------------------------------------------------------------------------
-character(len=100)::fn,fn2,fn3,fn4,fn5,fn6,fn7
-integer(kind=i4)::dy,dy2,dy3,dy4,dy5,dy6,dy7
-logical:: useit
-!---------------------------------------------------------------------------------
+!------------------------------------------
 !
-! Set the matrix The physical constant H=t_x*Hop+U*Hint
+! PHYSICAL CONSTANT
 !
-!
-!---------------------------------------------------------------------------------
-t_x=-1
+!-----------------------------------------
 U=10
-mu=7
-beta=1000
+mu=12
+t_x=1
+beta=500
 
-!---------------------------------------------------------
-!
-!FILE STUFF
-!
-!---------------------------------------------------------
-
-dy=8
-dy2=9
-dy3=10
-dy4=11
-dy5=12
-dy6=13
-
-write(fn,'(a)') '1_eig_ite.dat'
-write(fn2,'(a)') '2_eig_ite.dat'
-write(fn3,'(a)')'3_eig_ite.dat'
-write(fn4,'(a)')'4_eig_ite.dat'
-write(fn5,'(a)')'excitation_ite.dat'
-write(fn6,'(a)')'lefteigenvectors.dat'
-!write(fn7,'(a)')'comparisonofeigenvaluesEQKQ'
-
-
-!open(dy,file=fn,action="write",status="new")
-!open(dy2,file=fn2,action="write",status="new")
-!open(dy3,file=fn3,action="write",status="new")
-!open(dy4,file=fn4,action="write",status="new")
-!open(dy5,file=fn5,action="write",status="new")
-!open(dy6,file=fn6,action="write",status="new")
-
-!---------------------------------------------------------
-!
-!ALLOCATION
-!
-!---------------------------------------------------------
-allocate(K_mat(20,20))
-allocate(ID20(20,20))
-allocate(Q(20,20))
-allocate(omega8(8,8))
-allocate(expmomega8(8,8))
-allocate(exppomega8(8,8))
-allocate(ID8(8,8))
-allocate(K_teff(8,8))
-
-
-allocate(K12(4,4))
-allocate(K21(4,4))
-
-
-allocate(R2(4,4))
-allocate(KeffP(4,4))
-allocate(invR2(4,4))
-allocate(omega1old(4,4))
-allocate(omega1(4,4))
-
-!TEST
-allocate(R1(2,2))
-allocate(K11(2,2))
-allocate(reig_test(2))
-allocate(ieig_test(2))
-
-
-allocate(wr(20))
-allocate(wi(20))
-allocate(kn_term(20))
-allocate(inhom(20))
-allocate(solu(20))
-allocate(vl(20,20))
-allocate(wrord(20))
-allocate(L_mat(20,20))
-allocate(R_mat(20,20))
-allocate(E_mat(20,20))
-allocate(M_mat(20,20))
-allocate(F_E(20,20))
-allocate(RFL(20,20))
-allocate(L_syst(20,20))
-allocate(anticom_av(20))
-allocate(spectral(20))
-
-allocate(K22(20,20))
-
-!ALLOCATION 
-allocate(mat_A(12,12))
-allocate(mat_B(8,8))
-allocate(mat_C(12,8))
-allocate(omega_A(12,12))
-allocate(omega_B(8,8))
-allocate(wr_A(12))
-allocate(wr_B(8))
-allocate(wi_A(12))
-allocate(wi_B(8))
-allocate(temp_AA(12,12))
-allocate(omegatrA(12,12))
-allocate(omegatrB(8,8))
-allocate(temp_BB(8,8))
-allocate(rot_C_mat(12,8))
-allocate(psi_K_corr(20,20))
-allocate(M_tilde(20,20))
-!THE LINEAR SYSTEM
-allocate(E_n(20))
-allocate(MP1(20,20))
-allocate(MP2(20,20))
-allocate(MP3(20,20))
-allocate(v1(20))
-allocate(v2(20))
-
-allocate(v_tilde(20))
-!---------------------------------------------------------
-!
-!MATRIX  DEFINITION
-!
-!---------------------------------------------------------
 
 do i=1,20
-        kn_term(i)=0
-        spectral(i)=0
-    do j=1,20
-        K_mat(i,j)=0
-        M_mat(i,j)=0
-        F_E(i,j)=0
-        ID20(i,j)=0
-        psi_K_corr(i,j)=0
-    enddo
-enddo
-!can be optimized
-do i=1,20
-    ID20(i,i)=1
-enddo
-!DEFINITION OF K
-!---------------------------
+	v(i)=0
+	do j=1,20
+		K_mat(i,j)=0
+		Ku(i,j)=0
+		Kc(i,j)=0
+		D(i,j)=0
+	enddo
+enddo 
+
+!The Kmatrix 
 K_mat(1,7)=t_x
 K_mat(1,2)=U
 K_mat(2,4)=t_x
@@ -266,137 +118,9 @@ K_mat(20,16)=t_x
 K_mat(20,15)=t_x
 K_mat(20,17)=-t_x
 K_mat(20,20)=U
-!---------------------------
-
-! THE UPPER MATRIX
-do i=1,12
-    do j=1,12
-        mat_A(i,j)=K_mat(i,j)
-    enddo
-enddo
-
-
-!THE DOWN MATRIX
-do i=1,8
-    do j=1,8
-        mat_B(i,j)=K_mat(i+12,j+12)
-    enddo
-enddo
-
-!THE CORRELATION MATRIX
-do i=1,12
-    do j=1,8
-        mat_C(i,j)=K_mat(i,j+12)
-    enddo
-enddo
-
-
-call eigengenleft(mat_B,wr_B,wi_B,omega_B,8)
-call eigengenleft(mat_A,wr_A,wi_A,omega_A,12)
-
-write(*,*) "The eigenvalues of A"
-do i=1,12
-    write(*,*) i,wr_A(i),wi_A(i)
-enddo
-write(*,*) " "
-write(*,*) "The eigenvalues of B"
-do i=1,8
-    write(*,*) i,wr_B(i),wi_B(i)
-enddo
-write(*,*) " "
-write(*,*) " "
-!do i=1,12
-!    do j=1,12
-!        omegatrA(i,j)=omega_A(j,i)
-!    enddo
-!enddo
-omegatrB=transpose(omega_B)
-omegatrA=transpose(omega_A)
-
-call inv(omegatrA,12)
-call inv(omegatrB,8)
-
-temp_BB=matmul(transpose(omega_B),matmul(mat_B,omegatrB))
-temp_AA=matmul(transpose(omega_A),matmul(mat_A,omegatrA))
-write(*,*) "Check Simmetry transform B "
-write(*,*) " "
-write(*,*) " "
-call mprint(temp_BB,8)
-write(*,*) " "
-write(*,*) " "
-write(*,*) "Check Simmetry transform A "
-write(*,*) " "
-write(*,*) " "
-call mprint(temp_AA,12)
-write(*,*) "THE CORRELATED BLOCK"
-write(*,*) " "
-write(*,*) " "
-call gen_mprint(mat_C,12,8)
-write(*,*) " "
-write(*,*) " "
-write(*,*) "THE ROTATED CORRELATED BLOCK"
-write(*,*) " "
-write(*,*) " "
-rot_C_mat=matmul(transpose(omega_A),matmul(mat_C,omegatrB))
-call gen_mprint(rot_C_mat,12,8)
-
-write(*,*) "PROBLEMATIC EIGENVECTOR OF A"
-
-do i=1,12
-write(*,*) i, omega_A(i,3),omega_A(i,6),omega_A(i,7),omega_A(i,8)
-enddo
-write(*,*) " "
-write(*,*) " "
-write(*,*) "PROBLEMATIC EIGENVECTOR OF B"
-do i=1,8
-write(*,*) i+12, omega_B(i,1),omega_B(i,3),omega_B(i,5),omega_B(i,6)
-enddo
-write(*,*) " "
-write(*,*) " "
-write(*,*) "NON PROBLEMATIC EIGENVECTOR OF A"
-do i=1,12
-write(*,*) i, omega_A(i,2),omega_A(i,1),omega_A(i,4),omega_A(i,5)
-enddo
-write(*,*) "NON PROBLEMATIC EIGENVECTOR OF B"
-do i=1,8
-write(*,*) i+12, omega_B(i,2),omega_B(i,4),omega_B(i,7),omega_B(i,8)
-enddo
-write(*,*) " debug 1"
-!matrix of the correlation
-do i=1,12
-    do j=1,8
-        if(abs(rot_C_mat(i,j)).lt.1.E-12) then
-            psi_K_corr(i,j+12)=0
-        else
-            psi_K_corr(i,j+12)=rot_C_mat(i,j)
-        endif
-    enddo
-enddo
-write(*,*) " debug2"
-!LER US BUILD THE EIGENVALUES OF THE BASIS
-do i=1,12
-    E_n(i)=wr_A(i)
-enddo
-do i=1,8
-    E_n(i+12)=wr_B(i)
-enddo
-write(*,*) "debug 3"
-!LET US BUILD THE FULL MATRIX R
-do i=1,12
-    do j=1,12
-        R_mat(i,j)=omega_A(i,j)
-    enddo
-enddo
-
-do i=1,8
-    do j=1,8
-        R_mat(i+12,j+12)=omega_B(i,j)
-    enddo
-enddo
-write(*,*) "chjeijqi"
-!Now I have to write the matrix M 
-kn_term(1)=1
-!the known term
+!--------
+!MATRIX M
+!-------- 
 M_mat(2,1)=1
 M_mat(3,7)=1
 M_mat(4,7)=1
@@ -415,66 +139,84 @@ M_mat(19,5)=1
 M_mat(19,6)=1
 M_mat(20,11)=-1
 M_mat(20,12)=-1
-!At this point I have to write 
-write(*,*) "feheoefhdp"
-call generate_Q(E_n,psi_K_corr,Q,beta,mu,20)
-call mprint(Q,20)
-!At this point the MP1
-call generate_MP1(MP1,R_mat,20)
-call generate_MP2(MP2,E_n,M_mat,R_mat,beta,mu,20)
-call generate_MP3(MP3,Q,R_mat,M_mat,20)
-call generate_v1(v1,kn_term,E_n,R_mat,beta,mu,20)
-call generate_v2(v2,kn_term,Q,R_mat,beta,mu,20)
-M_tilde=MP1-MP2-MP3
-v_tilde=v1+v2
-write(*,*) "THE MATRIX Q"
-call mprint(Q,20)
-
-!let us solve the thing.
-call solve_linear_system(M_tilde,v_tilde,solu,20)
-write(*,*) "the solution to the linear system is"
-do i=1,20
-    write(*,*) i,solu(i)
+!THE KNOWN TERM
+v(1)=1
+!SPLITTING OF THE MATRIX IN Ku Kc
+do i=1,12
+	do j=1,12
+		Ku(i,j)=K_mat(i,j)
+	enddo
 enddo
-!Let us evaluate the spectral weight of 
-write(*,*) "The average of anticomm"
-anticom_av=matmul(M_mat,solu)+kn_term
-do i=1,20
-write(*,*) i,anticom_av(i)
+do i=13,20
+	do j=13,20
+		Ku(i,j)=K_mat(i,j)
+	enddo
 enddo
-write(*,*) "spectrum of the theory"
-do i=1,20
-    write(*,*) i,E_n(i)
+
+do i=1,12
+	do j=13,20
+		Kc(i,j)=K_mat(i,j) 
+	enddo
 enddo
-write(*,*) "double pole contribution",psi_K_corr(8,15)
 
-Es=0
-    do p=1,20
-        Es=Es+R_mat(p,15)*anticom_av(p)
-    enddo
-write(*,*) "correction due to double pole",Es*psi_K_corr(8,15)
-!Let us write the inverse of R
-L_mat=R_mat
-call inv(L_mat,20)
-write(*,*) "inverse of the L matrix"
+!DIAGONALIZATION OF THE DIAGONALIZABLE PART
+!GENERATE THE MATRIX R AND L AND THE DEFINITION OF E 
 
-end program
+call eigengenleft(Ku,e_r,e_i,R_temp,20)
+
+write(*,*) "The spectrum of the theory"
+do i=1,20
+	write(*,*) i,e_r(i),e_i(i)  
+	E(i)=e_r(i)  
+enddo
+R=transpose(R_temp)
+L=R
+call inv(L,20)  
+
+! CHECKING THE CONDITION, IN THE LACK OF A THEOREM
+! WHICH CAN BE PROVE IN A PROBABLY EASY WAY PUTTING SOME CONSTRAINT ON THE
+! FORM OF THE MATRIX KC 
+
+do i=1,20
+	D(i,i)=rand()
+	write(*,*) i,D(i,i)  
+enddo
+write(*,*) "CHECKING THE CONDITION OF DECOUPLING"  
+!temp1=matmul(R,matmul(Kc,L))
+!temp2=matmul(R,matmul(Kc,L))
+!call mprint(matmul(temp1,matmul(D,temp2)),20)
+write(*,*) "THE CONDITION IS SATISFIED" 
+
+!WE CAN NOW GENERATE THE Q-MATRIX (F_ei-F_ej)/(e_i-e_j) * Kc_ij 
+!WE HAVE TO GENERATE THE FR-MATRIX  F_ei*R_ij
+temp1=matmul(R,matmul(Kc,L))
+Kc=temp1
+call generate_Q(Q,Kc,E,beta,mu,20)
+write(*,*) "CHECK THE MATRIX Q IF THERE ARE ANY PROBLEM" 
+call mprint(Q,20) 
+call generate_FR(FR,R,E,beta,mu,20)
+write(*,*) "CHECK THE MATRIX FR"
+call mprint(FR,20) 
+
+L1=R
+L2=matmul(FR,M_mat)
+L3=matmul(Q,matmul(R,M_mat)) 
+
+L_sys=L1-L2-L3   
+
+inhom=matmul(FR,v)
+inhom=inhom+matmul(Q,matmul(R,v)) 
+
+call solve_linear_system(L_sys,inhom,solu,20)
+write(*,*) "There is the vector solut n->1 d->2"
+write(*,*) "0->15 0->16 0->18 0->20"
+write(*,*) "U,mu",U,mu
+do i=1,20
+	write(*,*) i,solu(i)  
+enddo
 
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+end program 
