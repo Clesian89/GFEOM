@@ -4,7 +4,21 @@ of an Hub-dim.
 
  
 12 September:
-	Almost working code within the GFEOM 
+	Almost working code within the GFEOM
+ 
+14 September:
+
+	Both d_occ and density makes sanse.
+
+	However average that should be zero by definition look they are not
+	We probably should take them away. We should enforce the fact that they are 0. 
+
+	The spectral weight is calculated, the total weight sum up to 1 as expected.
+	However the individual weight could be negative but this I think is due to the fact that the
+	0 average by definition are not 0 in the solution  
+
+		 
+			
 	
 	
 	

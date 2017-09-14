@@ -19,26 +19,31 @@ real(kind=r8)::Ku(20,20),Kc(20,20),R(20,20),av(20),L(20,20)
 real(kind=r8)::M_mat(20,20),v(20),Q(20,20),K_mat(20,20)
 real(kind=r8)::E(20),e_r(20),e_i(20),R_temp(20,20),D(20,20) 
 real(kind=r8)::FR(20,20),L_sys(20,20),L1(20,20),L2(20,20),L3(20,20) 
-real(kind=r8)::inhom(20),solu(20)    
+real(kind=r8)::inhom(20),solu(20),anti_com(20)    
 !Dummy variable 
 integer(kind=i4)::i,j
 !remember to clean
-real(kind=r8)::temp1(20,20),temp2(20,20) 
-
-
-!------------------------------------------
+real(kind=r8)::temp1(20,20),temp2(20,20),temp1f(20) 
+real(kind=r8)::Rant(20),scal_Kc(20,20) 
+real(kind=r8)::sw1(20),sw2(20),sw3(20),spct(20)
+real(kind=r8)::tot_sw,l_bound,u_bound 
+real(kind=r8),allocatable::bin_w(:) 
+!----------------------------------------
 !
 ! PHYSICAL CONSTANT
 !
 !-----------------------------------------
-U=10
-mu=12
-t_x=1
+U=5
+mu=5
+t_x=5
 beta=500
 
 
 do i=1,20
 	v(i)=0
+	sw1(i)=0
+	sw2(i)=0
+	sw3(i)=0
 	do j=1,20
 		K_mat(i,j)=0
 		Ku(i,j)=0
@@ -169,6 +174,7 @@ do i=1,20
 	write(*,*) i,e_r(i),e_i(i)  
 	E(i)=e_r(i)  
 enddo
+write(*,*) "------------------------"
 R=transpose(R_temp)
 L=R
 call inv(L,20)  
@@ -215,8 +221,84 @@ do i=1,20
 	write(*,*) i,solu(i)  
 enddo
 
+!The average of the anticommutator
+anti_com= v + matmul(M_mat,solu) 
+!DEFINITION OF THE RESCALED KC 
+do i=1,20
+	do j=1,20
+		if(abs(Kc(i,j)).lt.1.E-9) then
+			scal_Kc(i,j)=0
+		else
+			if(abs(E(i)-E(j)).lt.1.E-7) then
+				scal_Kc(i,j)=0
+			else
+				scal_Kc(i,j)=( 1./(E(i)-E(j)) )*Kc(i,j) 
+			endif
+		endif
+	enddo
+enddo
+
+
+Rant=matmul(R,anti_com)
+temp1f=matmul(scal_Kc,Rant)
+temp2=matmul(L,scal_Kc)
+ 
+
+
+!THE SPECTRAL WEIGHT WE SPLIT IN A SUM OF 3 PARTIAL SW
+do i=1,20
+	sw1(i)=L(1,i)*Rant(i)
+	sw2(i)=L(1,i)*temp1f(i)
+	sw3(i)=temp2(1,i)*Rant(i) 
+enddo 
+
+spct=sw1+sw2-sw3
+
+tot_sw=0
+write(*,*) "THE SPECTRAL WEIGHT "
+do i=1,20
+	tot_sw=tot_sw+spct(i) 
+	write(*,*) i,E(i),spct(i) 
+enddo
+write(*,*) " THE TOTAL SPECTRAL WEIGHT"
+write(*,*) tot_sw
+!CHECK IF THE SUM OF ALL THE WEIGHT IS ONE
+!It Is we can try to see what is the spectral weight of the theory
+!Box 0.1
+allocate(bin_w(100))
+
+
+
+l_bound=-5.5
+u_bound=-5
+
+do i=1,200
+	bin_w(i)=0
+	do j=1,20
+		if(E(j).le.u_bound.and.E(j).gt.l_bound) then
+			bin_w(i)=bin_w(i)+spct(j)   
+		endif 
+	enddo
+	l_bound=l_bound+0.5
+	u_bound=u_bound+0.5
+enddo
+write(*,*) "WRITE THE FINAL RESULT"
+do i=1,48
+    write(*,*) ( (-5.5-5)/2.0 +(i-1)*0.5),bin_w(i) 
+enddo
+ write(*,*) "Manual assamble" 
+
+
+
+
+
+
+
+
+
 
 
 
 
 end program 
+

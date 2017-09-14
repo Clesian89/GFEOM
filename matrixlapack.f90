@@ -225,6 +225,9 @@ do i=1,N
 			Q(i,j)=0
 		else 
 			Q(i,j)=( ( F_E(i)-F_E(j) )/(E(i)-E(j)) )*Kc(i,j)
+			if(abs(E(i)-E(j)).lt.1E-7.and.Kc(i,j).gt.1E-7) then
+				write(*,*) "strange",i,j,E(i),E(j),Kc(i,j),Q(i,j)   
+			endif
 		endif       
 	enddo
 enddo 
